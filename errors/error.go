@@ -90,6 +90,9 @@ const (
 
 	// SerialSeqParseError -- SerialSeq failed to parse as hex digits
 	SerialSeqParseError // Code 14XX
+
+	// ExpiringSoon -- The issuer cert expires before an end entity cert would.
+	ExpiringSoon // Code 15XX
 )
 
 const (
@@ -215,6 +218,8 @@ func New(category Category, reason Reason) *Error {
 			msg = "Unable to verify certificate"
 		case BadRequest:
 			msg = "Invalid certificate request"
+		case ExpiringSoon:
+			msg = "Issuer cert expires before an end entity cert would"
 		default:
 			panic(fmt.Sprintf("Unsupported CFSSL error reason %d under category CertificateError.",
 				reason))

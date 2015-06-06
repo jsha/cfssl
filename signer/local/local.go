@@ -78,10 +78,13 @@ func NewSignerFromFile(caFile, caKeyFile string, policy *config.Signing) (*Signe
 	return NewSigner(priv, parsedCa, signer.DefaultSigAlgo(priv), policy)
 }
 
-func (s *Signer) sign(template *x509.Certificate, profile *config.SigningProfile, serialSeq string) (cert []byte, err error) {
-	err = signer.FillTemplate(template, s.policy.Default, profile, serialSeq)
+func (s *Signer) sign(template *x509.Certificate, profile *config.SigningProfile, serialSeq string) ([]byte, error) {
+	err := signer.FillTemplate(template, s.policy.Default, profile, serialSeq)
 	if err != nil {
-		return
+		return nil, err
+	}
+	if template.NotAfter.After(s.ca.NotAfter) {
+		return nil, cferr.Wrap(cferr.CertificateError, cferr.ExpiringSoon, err)
 	}
 
 	serialNumber := template.SerialNumber
@@ -89,7 +92,7 @@ func (s *Signer) sign(template *x509.Certificate, profile *config.SigningProfile
 	if s.ca == nil {
 		if !template.IsCA {
 			err = cferr.New(cferr.PolicyError, cferr.InvalidRequest)
-			return
+			return nil, err
 		}
 		template.DNSNames = nil
 		s.ca = template
@@ -111,9 +114,9 @@ func (s *Signer) sign(template *x509.Certificate, profile *config.SigningProfile
 		}
 	}
 
-	cert = pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
+	cert := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
 	log.Infof("signed certificate with serial number %s", serialNumber)
-	return
+	return cert, nil
 }
 
 // replaceSliceIfEmpty replaces the contents of replaced with newContents if
