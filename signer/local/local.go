@@ -9,8 +9,10 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"net"
+	"time"
 
 	"github.com/cloudflare/cfssl/config"
 	cferr "github.com/cloudflare/cfssl/errors"
@@ -40,6 +42,19 @@ func NewSigner(priv crypto.Signer, cert *x509.Certificate, sigAlgo x509.Signatur
 
 	if !policy.Valid() {
 		return nil, cferr.New(cferr.PolicyError, cferr.InvalidPolicy)
+	}
+
+	// Check at setup time that it is possible to issue certs given the expiry and
+	// the NotAfter date of the issuer cert.
+	for name, profile := range policy.Profiles {
+		if time.Now().Add(profile.Expiry).After(cert.NotAfter) {
+			return nil, cferr.Wrap(cferr.CertificateError, cferr.ExpiringSoon,
+				fmt.Errorf("profile %s has expiry past issuer expiry.", name))
+		}
+	}
+	if time.Now().Add(policy.Default.Expiry).After(cert.NotAfter) {
+		return nil, cferr.Wrap(cferr.CertificateError, cferr.ExpiringSoon,
+			errors.New("default profile has expiry past issuer expiry."))
 	}
 
 	return &Signer{
@@ -83,9 +98,6 @@ func (s *Signer) sign(template *x509.Certificate, profile *config.SigningProfile
 	if err != nil {
 		return nil, err
 	}
-	if template.NotAfter.After(s.ca.NotAfter) {
-		return nil, cferr.Wrap(cferr.CertificateError, cferr.ExpiringSoon, err)
-	}
 
 	serialNumber := template.SerialNumber
 	var initRoot bool
@@ -102,6 +114,13 @@ func (s *Signer) sign(template *x509.Certificate, profile *config.SigningProfile
 		template.MaxPathLen = 1
 		template.DNSNames = nil
 	}
+
+	fmt.Println("NA ", template.NotAfter)
+	fmt.Println("CA ", s.ca.NotAfter)
+	if template.NotAfter.After(s.ca.NotAfter) {
+		return nil, cferr.Wrap(cferr.CertificateError, cferr.ExpiringSoon, err)
+	}
+
 
 	derBytes, err := x509.CreateCertificate(rand.Reader, template, s.ca, template.PublicKey, s.priv)
 	if err != nil {
