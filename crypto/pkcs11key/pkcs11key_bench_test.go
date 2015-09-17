@@ -48,6 +48,14 @@ func BenchmarkPKCS11(b *testing.B) {
 		},
 	}
 
+	// Login once to make sure the PIN works. This avoids repeatedly logging in
+	// with bad credentials, which would pin-lock the token.
+	_, err := pkcs11key.New(*module, "", *tokenLabel, *pin, *privateKeyLabel)
+	if err != nil {
+		b.Fatal(err)
+		return
+	}
+
 	// Reset the benchmarking timer so we don't include setup time.
 	b.ResetTimer()
 
