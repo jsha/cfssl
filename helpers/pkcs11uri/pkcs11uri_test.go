@@ -12,7 +12,7 @@ type pkcs11UriTest struct {
 	Config *pkcs11key.Config
 }
 
-func cmpConfigs(a, b *pkcs11.Config) bool {
+func cmpConfigs(a, b *pkcs11key.Config) bool {
 	if a == nil {
 		if b == nil {
 			return true
@@ -30,7 +30,7 @@ func cmpConfigs(a, b *pkcs11.Config) bool {
 		(a.PrivateKeyLabel == b.PrivateKeyLabel)
 }
 
-func diffConfigs(want, have *pkcs11.Config) {
+func diffConfigs(want, have *pkcs11key.Config) {
 	if have == nil && want != nil {
 		fmt.Printf("Expected config, have nil.")
 		return
@@ -61,16 +61,16 @@ type Config struct {
 
 var pkcs11UriCases = []pkcs11UriTest{
 	{"pkcs11:token=Software%20PKCS%2311%20softtoken;manufacturer=Snake%20Oil,%20Inc.?pin-value=the-pin",
-		&pkcs11.Config{
+		&pkcs11key.Config{
 			TokenLabel: "Software PKCS#11 softtoken",
 			PIN:        "the-pin",
 		}},
 	{"pkcs11:slot-description=Sun%20Metaslot",
-		&pkcs11.Config{
+		&pkcs11key.Config{
 			SlotDescription: "Sun Metaslot",
 		}},
 	{"pkcs11:slot-description=test-label;token=test-token?pin-source=file:testdata/pin&module-name=test-module",
-		&pkcs11.Config{
+		&pkcs11key.Config{
 			SlotDescription: "test-label",
 			TokenLabel:      "test-token",
 			PIN:             "123456",

@@ -18,16 +18,6 @@ import (
 	"github.com/letsencrypt/boulder/Godeps/_workspace/src/github.com/miekg/pkcs11"
 )
 
-// Config contains configuration information required to use a PKCS
-// #11 key.
-type Config struct {
-	Module          string
-	SlotDescription string
-	TokenLabel      string
-	PIN             string
-	PrivateKeyLabel string
-}
-
 // from src/pkg/crypto/rsa/pkcs1v15.go
 var hashPrefixes = map[crypto.Hash][]byte{
 	crypto.MD5:       {0x30, 0x20, 0x30, 0x0c, 0x06, 0x08, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x02, 0x05, 0x05, 0x00, 0x04, 0x10},
