@@ -4,7 +4,6 @@ import (
 	"encoding/base64"
 	"io/ioutil"
 	"net/http"
-	"net/url"
 	"regexp"
 
 	"github.com/cloudflare/cfssl/log"
@@ -86,7 +85,14 @@ type Responder struct {
 // the Responder simply decodes the request, and passes back whatever
 // response is provided by the source.
 // Note: The caller must use http.StripPrefix to strip any path components
-// (including '/') on GET requests.
+// except a single leading '/' on GET requests. We require the leading '/' for
+// GET, because, if the OCSP response path is /ocsp, then requests will look
+// like either:
+//   POST /ocsp
+// or
+//   GET /ocsp/MFQwUjBQME4wTDAJBgUrDgMCGgU...
+// So the proper StripPrefix instantiation would use a path of '/ocsp'.
+//
 // Do not use this responder in conjunction with http.NewServeMux, because the
 // default handler will try to canonicalize path components by changing any
 // strings of repeated '/' into a single '/', which will break the base64
@@ -97,25 +103,16 @@ func (rs Responder) ServeHTTP(response http.ResponseWriter, request *http.Reques
 	var err error
 	switch request.Method {
 	case "GET":
-		base64Request, err := url.QueryUnescape(request.URL.Path)
-		if err != nil {
-			log.Errorf("Error decoding URL: %s", request.URL.Path)
+		requestB64 := request.URL.Path
+		if requestB64[0] != '/' {
+			log.Errorf("GET request did not include a leading '/' in path: %s", request.URL.Path)
 			response.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		// url.QueryUnescape not only unescapes %2B escaping, but it additionally
-		// turns the resulting '+' into a space, which makes base64 decoding fail.
-		// So we go back afterwards and turn ' ' back into '+'. This means we
-		// accept some malformed input that includes ' ' or %20, but that's fine.
-		base64RequestBytes := []byte(base64Request)
-		for i := range base64RequestBytes {
-			if base64RequestBytes[i] == ' ' {
-				base64RequestBytes[i] = '+'
-			}
-		}
-		requestBody, err = base64.StdEncoding.DecodeString(string(base64RequestBytes))
+		requestB64 = requestB64[1:]
+		requestBody, err = base64.StdEncoding.DecodeString(requestB64)
 		if err != nil {
-			log.Errorf("Error decoding base64 from URL: %s", base64Request)
+			log.Errorf("Error decoding base64 from URL: %s", requestB64)
 			response.WriteHeader(http.StatusBadRequest)
 			return
 		}
