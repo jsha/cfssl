@@ -85,6 +85,7 @@ type Responder struct {
 	clk    clock.Clock
 }
 
+// NewResponder instantiates a Responder with the give Source.
 func NewResponder(source Source) *Responder {
 	return &Responder{
 		Source: source,
