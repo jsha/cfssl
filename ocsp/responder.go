@@ -179,11 +179,11 @@ func (rs Responder) ServeHTTP(response http.ResponseWriter, request *http.Reques
 	}
 
 	// Write OCSP response to response
-	response.Header().Add("Last-Modified", parsedResponse.ProducedAt.Format(time.RFC1123))
+	response.Header().Add("Last-Modified", parsedResponse.ThisUpdate.Format(time.RFC1123))
 	response.Header().Add("Expires", parsedResponse.NextUpdate.Format(time.RFC1123))
 	maxAge := int64(parsedResponse.NextUpdate.Sub(rs.clk.Now()) / time.Second)
 	if maxAge > 0 {
-		response.Header().Add("Cache-Control", fmt.Sprintf("max-age=%d", maxAge))
+		response.Header().Add("Cache-Control", fmt.Sprintf("max-age=%d,public,no-transform,must-revalidate", maxAge))
 	}
 	response.WriteHeader(http.StatusOK)
 	response.Write(ocspResponse)
